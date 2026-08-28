@@ -6,7 +6,7 @@ const CONFIG = {
 };
 
 // ========== 状态 ==========
-const ENCRYPTED = '555b475b47506c4353466c020370007e79616462027b0a5b487c755e784b6151596d544a0073675b5e5d790b73515a434b5b5d664a735e51017f40727f766a06797807440a4064446b4159600b617072787862070057796245777a4301';
+const ENCRYPTED = '555b475b47506c4353466c020370007e79616462026762066a790b7a077841556a6d59725b0a020a4b6b605d7d7347506266657c5e7c6674674744627167584a45036970764a017166464465787160786b077e62687a54777a7b055758';
 
 function xorDecrypt(hex, key) {
   let out = '';
@@ -16,13 +16,17 @@ function xorDecrypt(hex, key) {
   return out;
 }
 
-const token = localStorage.getItem('gh_token') || (() => {
+let token = getToken();
+
+function getToken() {
+  const cached = localStorage.getItem('gh_token');
+  if (cached) return cached;
   const key = prompt('请输入解锁密码：');
   if (!key) return '';
   const decrypted = xorDecrypt(ENCRYPTED, key);
   localStorage.setItem('gh_token', decrypted);
   return decrypted;
-})();
+}
 
 // ========== DOM ==========
 const $ = (s) => document.querySelector(s);
@@ -56,6 +60,11 @@ async function loadNotes() {
     const notes = issues.filter((i) => !i.pull_request);
     renderNotes(notes);
   } catch (err) {
+    if (err.message.includes('401')) {
+      localStorage.removeItem('gh_token');
+      token = getToken();
+      if (token) return loadNotes();
+    }
     noteList.innerHTML = `<div class="error">加载失败：${err.message}</div>`;
   }
 }
