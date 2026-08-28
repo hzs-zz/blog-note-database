@@ -6,7 +6,23 @@ const CONFIG = {
 };
 
 // ========== 状态 ==========
-const token = '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';
+const ENCRYPTED = '555b475b47506c4353466c020370007e79616462027b0a5b487c755e784b6151596d544a0073675b5e5d790b73515a434b5b5d664a735e51017f40727f766a06797807440a4064446b4159600b617072787862070057796245777a4301';
+
+function xorDecrypt(hex, key) {
+  let out = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    out += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16) ^ key.charCodeAt((i / 2) % key.length));
+  }
+  return out;
+}
+
+const token = localStorage.getItem('gh_token') || (() => {
+  const key = prompt('请输入解锁密码：');
+  if (!key) return '';
+  const decrypted = xorDecrypt(ENCRYPTED, key);
+  localStorage.setItem('gh_token', decrypted);
+  return decrypted;
+})();
 
 // ========== DOM ==========
 const $ = (s) => document.querySelector(s);
