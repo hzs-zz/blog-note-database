@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>速记</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- 笔记列表 -->
+    <div id="note-list" class="note-list"></div>
+
+  </div>
+
+  <!-- 右下角加号 -->
+  <button id="fab-btn" class="fab">+</button>
+
+  <!-- 写笔记弹窗 -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <span>新建笔记</span>
+        <button id="modal-close-btn" class="modal-close">&times;</button>
+      </div>
+      <textarea id="note-input" placeholder="写点笔记..." rows="8"></textarea>
+      <div class="modal-footer">
+        <button id="publish-btn">发布</button>
+        <span id="publish-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
