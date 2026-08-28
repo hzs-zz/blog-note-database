@@ -6,8 +6,7 @@ const CONFIG = {
 };
 
 // ========== 状态 ==========
-const token = localStorage.getItem('gh_token') || prompt('请输入 GitHub Token：');
-if (token) localStorage.setItem('gh_token', token);
+const token = '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';
 
 // ========== DOM ==========
 const $ = (s) => document.querySelector(s);
