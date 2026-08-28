@@ -6,7 +6,7 @@ const CONFIG = {
 };
 
 // ========== 状态 ==========
-const ENCRYPTED = '555b475b47506c4353466c020370007e79616462026762066a790b7a077841556a6d59725b0a020a4b6b605d7d7347506266657c5e7c6674674744627167584a45036970764a017166464465787160786b077e62687a54777a7b055758';
+const ENCRYPTED = '030371007f79606463026662076a780b7b077941546a6c59735b0b020b4b6a605c7d7247516267657d5e7d6675674644637166584b45026971764b017066474464787060796b067e63687b54767a7a055658';
 
 function xorDecrypt(hex, key) {
   let out = '';
@@ -23,7 +23,7 @@ function getToken() {
   if (cached) return cached;
   const key = prompt('请输入解锁密码：');
   if (!key) return '';
-  const decrypted = xorDecrypt(ENCRYPTED, key);
+  const decrypted = 'github_pat_' + xorDecrypt(ENCRYPTED, key);
   localStorage.setItem('gh_token', decrypted);
   return decrypted;
 }
