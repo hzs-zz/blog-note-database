@@ -6,7 +6,7 @@ const CONFIG = {
 };
 
 // ========== 状态 ==========
-const token = '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';
+const token = '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';
 
 // ========== DOM ==========
 const $ = (s) => document.querySelector(s);
