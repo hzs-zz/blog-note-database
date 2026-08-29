@@ -6,7 +6,8 @@ const CONFIG = {
 };
 
 // ========== 状态 ==========
-const ENCRYPTED = '030371007f79606463026662076a780b7b077941546a6c59735b0b020b4b6a605c7d7247516267657d5e7d6675674644637166584b45026971764b017066474464787060796b067e63687b54767a7a055658';
+const ENCRYPTED_READ = '4354235760243d3b28422723107e0100072a1a261114723c3f053e403616051f592d393323523100593c0a230b4504040e675b572f143f2e25097f59203e094a1f332a6121203a20252b025162151d152927';
+const ENCRYPTED_WRITE = '030371007f7960646302446b7b02766145684b715c796c417e6b055b667a505d4053600b5001610b640b756571595f4b7d0a5a5771767f5d437d78460a406702657c7d71067861770175016260557b07077f';
 
 function xorDecrypt(hex, key) {
   let out = '';
@@ -17,15 +18,21 @@ function xorDecrypt(hex, key) {
 }
 
 let token = getToken();
+let writeToken = null;
 
 function getToken() {
-  const cached = localStorage.getItem('gh_token');
-  if (cached) return cached;
-  const key = prompt('请输入解锁密码：');
+  return 'github_pat_' + xorDecrypt(ENCRYPTED_READ, 'read-only');
+}
+
+function getWriteToken() {
+  if (writeToken) return writeToken;
+  const cached = localStorage.getItem('gh_wtoken');
+  if (cached) { writeToken = cached; return writeToken; }
+  const key = prompt('请输入发布密码：');
   if (!key) return '';
-  const decrypted = 'github_pat_' + xorDecrypt(ENCRYPTED, key);
-  localStorage.setItem('gh_token', decrypted);
-  return decrypted;
+  writeToken = 'github_pat_' + xorDecrypt(ENCRYPTED_WRITE, key);
+  localStorage.setItem('gh_wtoken', writeToken);
+  return writeToken;
 }
 
 // ========== DOM ==========
@@ -40,7 +47,7 @@ const publishStatus = $('#publish-status');
 const modalCloseBtn = $('#modal-close-btn');
 
 // ========== 加载笔记 ==========
-loadNotes();
+document.addEventListener('DOMContentLoaded', loadNotes);
 
 async function loadNotes() {
   noteList.innerHTML = '<div class="loading">加载中...</div>';
@@ -60,11 +67,6 @@ async function loadNotes() {
     const notes = issues.filter((i) => !i.pull_request);
     renderNotes(notes);
   } catch (err) {
-    if (err.message.includes('401')) {
-      localStorage.removeItem('gh_token');
-      token = getToken();
-      if (token) return loadNotes();
-    }
     noteList.innerHTML = `<div class="error">加载失败：${err.message}</div>`;
   }
 }
@@ -95,7 +97,7 @@ function renderNotes(notes) {
       html += `
         <div class="note-card">
           <div class="note-time">${time}</div>
-          <div class="md-body">${marked.parse(item.body || '')}</div>
+          <div class="md-body">${sanitizeHtml(marked.parse(item.body || ''))}</div>
         </div>`;
     });
     html += `</div>`;
@@ -132,6 +134,8 @@ publishBtn.addEventListener('click', async () => {
 
   try {
     const { owner, repo, label } = CONFIG;
+    const wToken = getWriteToken();
+    if (!wToken) { publishStatus.textContent = '⚠️ 需要发布密码'; publishBtn.disabled = false; return; }
 
     // 1. 创建笔记
     const resp = await fetch(
@@ -139,7 +143,7 @@ publishBtn.addEventListener('click', async () => {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${wToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -175,8 +179,10 @@ publishBtn.addEventListener('click', async () => {
 async function appendLog(entry) {
   try {
     const { owner, repo } = CONFIG;
+    const wToken = getWriteToken();
+    if (!wToken) return;
     const headers = {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${wToken}`,
       'Content-Type': 'application/json',
     };
 
@@ -228,6 +234,15 @@ async function appendLog(entry) {
 }
 
 // ========== 工具 ==========
+function sanitizeHtml(html) {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son\w+\s*=\s*\S+/gi, '')
+    .replace(/javascript\s*:/gi, '');
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
