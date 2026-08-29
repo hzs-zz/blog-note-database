@@ -182,8 +182,13 @@ publishBtn.addEventListener('click', async () => {
     const logEntry = `- [${new Date().toLocaleString('zh-CN')}] ${body}\n`;
     appendLog(logEntry);
 
+    // 3. 等待 GitHub 同步，重试刷新
+    publishStatus.textContent = '发布成功，同步中...';
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 4000));
+      await loadNotes();
+    }
     closeModal();
-    setTimeout(() => loadNotes(), 500);
   } catch (err) {
     publishStatus.textContent = `❌ ${err.message}`;
   } finally {
