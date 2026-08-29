@@ -85,8 +85,10 @@ async function loadNotes() {
     const issues = await resp.json();
     const notes = issues.filter((i) => !i.pull_request);
     renderNotes(notes);
+    return notes.map(n => n.number);
   } catch (err) {
     noteList.innerHTML = `<div class="error">加载失败：${err.message}</div>`;
+    return [];
   }
 }
 
@@ -177,16 +179,19 @@ publishBtn.addEventListener('click', async () => {
       const err = await resp.json();
       throw new Error(err.message || `HTTP ${resp.status}`);
     }
+    const newIssue = await resp.json();
+    const newNumber = newIssue.number;
 
     // 2. 追加日志（fire-and-forget）
     const logEntry = `- [${new Date().toLocaleString('zh-CN')}] ${body}\n`;
     appendLog(logEntry);
 
-    // 3. 等待 GitHub 同步，重试刷新
+    // 3. 等待 GitHub 同步，出现后立即关闭
     publishStatus.textContent = '发布成功，同步中...';
     for (let i = 0; i < 3; i++) {
       await new Promise(r => setTimeout(r, 4000));
-      await loadNotes();
+      const numbers = await loadNotes();
+      if (numbers.includes(newNumber)) break;
     }
     closeModal();
   } catch (err) {
