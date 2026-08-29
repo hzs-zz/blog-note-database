@@ -7,7 +7,7 @@ const CONFIG = {
 
 // ========== 状态 ==========
 const ENCRYPTED_READ = '4354235760243d3b28422723107e0100072a1a261114723c3f053e403616051f592d393323523100593c0a230b4504040e675b572f143f2e25097f59203e094a1f332a6121203a20252b025162151d152927';
-const ENCRYPTED_WRITE = '030371007f7960646302446b7b02766145684b715c796c417e6b055b667a505d4053600b5001610b640b756571595f4b7d0a5a5771767f5d437d78460a406702657c7d71067861770175016260557b07077f';
+const ENCRYPTED_WRITE = 'sbBxqk69jPr3fYM2lWIx0VS5PUZacXz4n0pwZL8I1c0hI7CrxFGDJoCjdkxv6JCzneKwwaeoavKiG+WgcSIQolU+ZpN6LJ2wuifhYPQCKw6v0KPkwD6QlkxQICBNF1XqvbBG5ANFbvXup8qt588=';
 
 function xorDecrypt(hex, key) {
   let out = '';
@@ -17,6 +17,20 @@ function xorDecrypt(hex, key) {
   return out;
 }
 
+async function aesGcmDecrypt(base64, password) {
+  const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const iv = raw.slice(0, 12);
+  const tag = raw.slice(12, 28);
+  const data = raw.slice(28);
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+  const key = await crypto.subtle.importKey('raw', hash, 'AES-GCM', false, ['decrypt']);
+  const combined = new Uint8Array(data.length + tag.length);
+  combined.set(data, 0);
+  combined.set(tag, data.length);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, combined);
+  return new TextDecoder().decode(decrypted);
+}
+
 let token = getToken();
 let writeToken = null;
 
@@ -24,15 +38,20 @@ function getToken() {
   return 'github_pat_' + xorDecrypt(ENCRYPTED_READ, 'read-only');
 }
 
-function getWriteToken() {
+async function getWriteToken() {
   if (writeToken) return writeToken;
   const cached = localStorage.getItem('gh_wtoken');
   if (cached) { writeToken = cached; return writeToken; }
   const key = prompt('请输入发布密码：');
   if (!key) return '';
-  writeToken = 'github_pat_' + xorDecrypt(ENCRYPTED_WRITE, key);
-  localStorage.setItem('gh_wtoken', writeToken);
-  return writeToken;
+  try {
+    writeToken = 'github_pat_' + await aesGcmDecrypt(ENCRYPTED_WRITE, key);
+    localStorage.setItem('gh_wtoken', writeToken);
+    return writeToken;
+  } catch {
+    alert('密码错误');
+    return '';
+  }
 }
 
 // ========== DOM ==========
@@ -134,7 +153,7 @@ publishBtn.addEventListener('click', async () => {
 
   try {
     const { owner, repo, label } = CONFIG;
-    const wToken = getWriteToken();
+    const wToken = await getWriteToken();
     if (!wToken) { publishStatus.textContent = '⚠️ 需要发布密码'; publishBtn.disabled = false; return; }
 
     // 1. 创建笔记
@@ -179,7 +198,7 @@ publishBtn.addEventListener('click', async () => {
 async function appendLog(entry) {
   try {
     const { owner, repo } = CONFIG;
-    const wToken = getWriteToken();
+    const wToken = await getWriteToken();
     if (!wToken) return;
     const headers = {
       Authorization: `Bearer ${wToken}`,
